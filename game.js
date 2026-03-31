@@ -36,6 +36,7 @@ let inputQueue = []; // Queue for buffering multiple rapid inputs
 let score = 0;
 let speed = 'medium';
 let lastMoveTime = 0;
+let interpolation = 0; // For smooth movement (0 to 1)
 
 // DOM Elements
 const startScreen = document.getElementById('start-screen');
@@ -67,9 +68,7 @@ function init() {
 function handleKeyDown(e) {
     switch (gameState) {
         case 'start':
-            if (e.key === 'Enter') {
-                startGame();
-            }
+            handleStartScreenInput(e);
             break;
 
         case 'playing':
@@ -88,6 +87,39 @@ function handleKeyDown(e) {
             }
             break;
     }
+}
+
+// Handle input on start screen (speed selection)
+function handleStartScreenInput(e) {
+    const speedOptions = ['slow', 'medium', 'fast'];
+    const currentIndex = speedOptions.indexOf(speed);
+    
+    switch (e.key) {
+        case 'ArrowUp':
+            if (currentIndex > 0) {
+                speed = speedOptions[currentIndex - 1];
+                updateSpeedSelection();
+            }
+            e.preventDefault();
+            break;
+        case 'ArrowDown':
+            if (currentIndex < speedOptions.length - 1) {
+                speed = speedOptions[currentIndex + 1];
+                updateSpeedSelection();
+            }
+            e.preventDefault();
+            break;
+        case 'Enter':
+            startGame();
+            break;
+    }
+}
+
+// Update radio button selection to match current speed
+function updateSpeedSelection() {
+    speedInputs.forEach(input => {
+        input.checked = (input.value === speed);
+    });
 }
 
 // Handle input during gameplay
@@ -190,10 +222,15 @@ function spawnFood() {
 function gameLoop(timestamp) {
     if (gameState === 'playing') {
         const elapsed = timestamp - lastMoveTime;
+        const moveInterval = SPEEDS[speed];
 
-        if (elapsed >= SPEEDS[speed]) {
+        if (elapsed >= moveInterval) {
             update();
             lastMoveTime = timestamp;
+            interpolation = 0;
+        } else {
+            // Calculate interpolation for smooth movement
+            interpolation = elapsed / moveInterval;
         }
     }
 
@@ -241,31 +278,217 @@ function update() {
     }
 }
 
+// Helper function to check if two segments are adjacent (handling wrap-around)
+function areSegmentsAdjacent(seg1, seg2) {
+    const dx = Math.abs(seg1.x - seg2.x);
+    const dy = Math.abs(seg1.y - seg2.y);
+    // Adjacent if diff is 1, or if wrapping (diff is GRID_SIZE - 1)
+    const adjX = dx <= 1 || dx === GRID_SIZE - 1;
+    const adjY = dy <= 1 || dy === GRID_SIZE - 1;
+    return adjX && adjY && (dx + dy <= 2);
+}
+
+// Check if head is about to wrap
+function isHeadWrapping() {
+    if (snake.length === 0) return false;
+    const head = snake[0];
+    const nextX = head.x + direction.x;
+    const nextY = head.y + direction.y;
+    return nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE;
+}
+
+// Check if segments are on opposite sides (wrapped)
+function segmentsAreWrapped(seg1, seg2) {
+    const dx = Math.abs(seg1.x - seg2.x);
+    const dy = Math.abs(seg1.y - seg2.y);
+    return dx > 1 || dy > 1;
+}
+
+// Helper function to get interpolated position
+function getInterpolatedPosition(segment, index) {
+    // Don't interpolate during wrap-around
+    if (index === 0 && gameState === 'playing' && !isHeadWrapping()) {
+        // Interpolate head position based on direction
+        return {
+            x: segment.x * CELL_SIZE + direction.x * CELL_SIZE * interpolation,
+            y: segment.y * CELL_SIZE + direction.y * CELL_SIZE * interpolation
+        };
+    } else if (index > 0 && index < snake.length && gameState === 'playing') {
+        const prev = snake[index - 1];
+        
+        // Don't interpolate if wrapped
+        if (segmentsAreWrapped(segment, prev)) {
+            return {
+                x: segment.x * CELL_SIZE,
+                y: segment.y * CELL_SIZE
+            };
+        }
+        
+        // Interpolate body towards previous segment
+        const dx = prev.x - segment.x;
+        const dy = prev.y - segment.y;
+        
+        return {
+            x: segment.x * CELL_SIZE + dx * CELL_SIZE * interpolation,
+            y: segment.y * CELL_SIZE + dy * CELL_SIZE * interpolation
+        };
+    }
+    
+    return {
+        x: segment.x * CELL_SIZE,
+        y: segment.y * CELL_SIZE
+    };
+}
+
 // Render the game
 function render() {
-    // Clear canvas with solid fill (faster than clearRect)
-    ctx.fillStyle = COLORS.background;
+    // Clear canvas with gradient background
+    const gradient = ctx.createLinearGradient(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    gradient.addColorStop(0, '#1e293b');
+    gradient.addColorStop(1, '#0f172a');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // Draw food
-    ctx.fillStyle = COLORS.food;
-    ctx.fillRect(
-        food.x * CELL_SIZE + 2,
-        food.y * CELL_SIZE + 2,
-        CELL_SIZE - 4,
-        CELL_SIZE - 4
+    // Draw food with glow effect and pulse animation
+    const foodPulse = Math.sin(Date.now() / 300) * 2 + 8;
+    const foodGradient = ctx.createRadialGradient(
+        food.x * CELL_SIZE + CELL_SIZE / 2,
+        food.y * CELL_SIZE + CELL_SIZE / 2,
+        2,
+        food.x * CELL_SIZE + CELL_SIZE / 2,
+        food.y * CELL_SIZE + CELL_SIZE / 2,
+        CELL_SIZE / 2
     );
+    foodGradient.addColorStop(0, '#ef4444');
+    foodGradient.addColorStop(0.7, '#dc2626');
+    foodGradient.addColorStop(1, '#991b1b');
+    
+    ctx.shadowBlur = foodPulse + 10;
+    ctx.shadowColor = 'rgba(239, 68, 68, 0.6)';
+    ctx.fillStyle = foodGradient;
+    ctx.beginPath();
+    ctx.arc(
+        food.x * CELL_SIZE + CELL_SIZE / 2,
+        food.y * CELL_SIZE + CELL_SIZE / 2,
+        CELL_SIZE / 2 - 2,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+    ctx.shadowBlur = 0;
 
-    // Draw snake (batch operations for better performance)
-    snake.forEach((segment, index) => {
-        ctx.fillStyle = index === 0 ? COLORS.snakeHead : COLORS.snakeBody;
-        ctx.fillRect(
-            segment.x * CELL_SIZE + 1,
-            segment.y * CELL_SIZE + 1,
-            CELL_SIZE - 2,
-            CELL_SIZE - 2
-        );
-    });
+    // Draw snake with smooth, connected segments
+    if (snake.length > 0) {
+        // Draw connecting lines between segments (skip wrap-around connections)
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = CELL_SIZE * 0.6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(74, 222, 128, 0.6)';
+        
+        ctx.beginPath();
+        let pathStarted = false;
+        
+        snake.forEach((segment, index) => {
+            const pos = getInterpolatedPosition(segment, index);
+            const centerX = pos.x + CELL_SIZE / 2;
+            const centerY = pos.y + CELL_SIZE / 2;
+            
+            if (index === 0) {
+                ctx.moveTo(centerX, centerY);
+                pathStarted = true;
+            } else {
+                // Check if this segment is wrapping around (grid distance > 1)
+                const prevSeg = snake[index - 1];
+                const dx = Math.abs(segment.x - prevSeg.x);
+                const dy = Math.abs(segment.y - prevSeg.y);
+                const isWrapping = dx > 1 || dy > 1;
+                
+                if (isWrapping) {
+                    // Start a new path segment (don't connect across wrap)
+                    ctx.moveTo(centerX, centerY);
+                } else {
+                    ctx.lineTo(centerX, centerY);
+                }
+            }
+        });
+        ctx.stroke();
+        
+        // Draw circular segments on top
+        snake.forEach((segment, index) => {
+            const pos = getInterpolatedPosition(segment, index);
+            const centerX = pos.x + CELL_SIZE / 2;
+            const centerY = pos.y + CELL_SIZE / 2;
+            const isHead = index === 0;
+            const radius = CELL_SIZE / 2 - 1;
+            
+            if (isHead) {
+                // Head with brighter glow and larger size
+                const headGradient = ctx.createRadialGradient(
+                    centerX, centerY, 2,
+                    centerX, centerY, radius + 2
+                );
+                headGradient.addColorStop(0, '#86efac');
+                headGradient.addColorStop(0.6, '#4ade80');
+                headGradient.addColorStop(1, '#22c55e');
+                
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = 'rgba(74, 222, 128, 0.9)';
+                ctx.fillStyle = headGradient;
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius + 1, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add eyes to head
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0f172a';
+                const eyeOffset = radius * 0.4;
+                const eyeSize = radius * 0.25;
+                
+                // Determine eye position based on direction
+                let eyeX1, eyeY1, eyeX2, eyeY2;
+                if (direction === DIRECTIONS.right || direction === DIRECTIONS.left) {
+                    eyeX1 = centerX + (direction.x * eyeOffset || eyeOffset);
+                    eyeY1 = centerY - eyeOffset / 2;
+                    eyeX2 = centerX + (direction.x * eyeOffset || eyeOffset);
+                    eyeY2 = centerY + eyeOffset / 2;
+                } else {
+                    eyeX1 = centerX - eyeOffset / 2;
+                    eyeY1 = centerY + (direction.y * eyeOffset || eyeOffset);
+                    eyeX2 = centerX + eyeOffset / 2;
+                    eyeY2 = centerY + (direction.y * eyeOffset || eyeOffset);
+                }
+                
+                ctx.beginPath();
+                ctx.arc(eyeX1, eyeY1, eyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(eyeX2, eyeY2, eyeSize, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Body with subtle glow
+                const bodyGradient = ctx.createRadialGradient(
+                    centerX, centerY, 2,
+                    centerX, centerY, radius
+                );
+                bodyGradient.addColorStop(0, '#4ade80');
+                bodyGradient.addColorStop(0.7, '#22c55e');
+                bodyGradient.addColorStop(1, '#16a34a');
+                
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = 'rgba(74, 222, 128, 0.5)';
+                ctx.fillStyle = bodyGradient;
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+    
+    ctx.shadowBlur = 0;
 }
 
 // Update score display

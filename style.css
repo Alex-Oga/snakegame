@@ -1,0 +1,153 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.screen.hidden {
+    display: none;
+}
+
+/* Start Screen */
+#start-screen h1 {
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    color: #4ade80;
+}
+
+.speed-selector {
+    background-color: #2d2d2d;
+    padding: 1.5rem 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.speed-selector h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: #ffffff;
+}
+
+.speed-selector label {
+    display: block;
+    padding: 0.5rem 1rem;
+    margin: 0.5rem 0;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.speed-selector label:hover {
+    background-color: #3d3d3d;
+}
+
+.speed-selector input[type="radio"] {
+    margin-right: 0.5rem;
+    accent-color: #4ade80;
+}
+
+.instruction {
+    color: #888888;
+    font-size: 1rem;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Game Screen */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    width: 400px;
+    padding: 0.75rem 1rem;
+    background-color: #2d2d2d;
+    border-radius: 10px 10px 0 0;
+    font-size: 1rem;
+}
+
+#score-display {
+    color: #4ade80;
+    font-weight: bold;
+}
+
+#speed-display {
+    color: #888888;
+}
+
+#game-canvas {
+    background-color: #2d2d2d;
+    border: 2px solid #3d3d3d;
+    display: block;
+}
+
+#game-screen .instruction {
+    margin-top: 1rem;
+}
+
+/* Pause Overlay */
+.overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.85);
+    padding: 2rem 3rem;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 10;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay h2 {
+    font-size: 2rem;
+    color: #4ade80;
+    margin-bottom: 1rem;
+}
+
+.overlay p {
+    color: #888888;
+}
+
+/* Game Over Screen */
+#gameover-screen h1 {
+    font-size: 2.5rem;
+    color: #ef4444;
+    margin-bottom: 1.5rem;
+}
+
+#final-score {
+    font-size: 1.5rem;
+    color: #4ade80;
+    margin-bottom: 2rem;
+}

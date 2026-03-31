@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h1>🐍 SNAKE 🐍</h1>
+            <div class="speed-selector">
+                <h2>Select Speed:</h2>
+                <label>
+                    <input type="radio" name="speed" value="slow">
+                    Slow
+                </label>
+                <label>
+                    <input type="radio" name="speed" value="medium" checked>
+                    Medium
+                </label>
+                <label>
+                    <input type="radio" name="speed" value="fast">
+                    Fast
+                </label>
+            </div>
+            <p class="instruction">Press ENTER to Start</p>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden">
+            <div class="game-header">
+                <span id="score-display">Score: 0</span>
+                <span id="speed-display">Speed: Medium</span>
+            </div>
+            <canvas id="game-canvas" width="400" height="400"></canvas>
+            <p class="instruction">Press P to Pause</p>
+        </div>
+
+        <!-- Pause Overlay -->
+        <div id="pause-overlay" class="overlay hidden">
+            <h2>PAUSED</h2>
+            <p>Press P or Space to Resume</p>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="screen hidden">
+            <h1>GAME OVER</h1>
+            <p id="final-score">Final Score: 0</p>
+            <p class="instruction">Press ENTER to Restart</p>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
